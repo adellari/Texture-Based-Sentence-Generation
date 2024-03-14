@@ -144,13 +144,13 @@ public class SentenceGenerator : MonoBehaviour
         if (!PrimeAtlas())
             return;
         ParseSentence();
-        PrimeData();
+        
     }
 
     
     void Update()
     {
-        
+        PrimeData();
     }
 
     void OnApplicationQuit()
