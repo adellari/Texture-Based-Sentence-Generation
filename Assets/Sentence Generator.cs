@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using UnityEditor.Sprites;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.UI;
 
 public class SentenceGenerator : MonoBehaviour
 {
@@ -21,9 +22,9 @@ public class SentenceGenerator : MonoBehaviour
 
     public struct ComputeParams
     {
-        public uint width;
-        public uint height;
-        public uint depth;
+        public int width;
+        public int height;
+        public int depth;
     }
 
     public struct FontKey
@@ -60,6 +61,7 @@ public class SentenceGenerator : MonoBehaviour
     //and o is its order in the sentence
     private ComputeBuffer indexBuffer;
 
+    public RawImage debugImage;
     
     //for this it might be helpful to create a dictionary for lookup
     // to understand where letters map on the atlas
@@ -79,6 +81,8 @@ public class SentenceGenerator : MonoBehaviour
             keyArr[a].id = key; //need to actually replace this with the id of the letter key
             
             Debug.Log(sentence[a] + ": " + key);
+            //Debug.Log($"column: {key % 16}, row {}");
+            
         }
         
         indexBuffer.SetData(keyArr);
@@ -90,26 +94,38 @@ public class SentenceGenerator : MonoBehaviour
         var len = sentence.Length;
         
         cParams = new ComputeParams();
-        cParams.width = (uint)Mathf.CeilToInt(dim.x);
-        cParams.height = (uint)Mathf.CeilToInt(dim.y);
-        cParams.depth = (uint)len;
+        cParams.width = Mathf.CeilToInt(dim.x / 8);
+        cParams.height = Mathf.CeilToInt(dim.y / 8);
+        cParams.depth = len;
         
-        Result = new RenderTexture(Mathf.CeilToInt(dim.x * len), Mathf.CeilToInt(dim.y), 0,
-            GraphicsFormat.R8_UInt);
+        Result = new RenderTexture(Mathf.CeilToInt(dim.x * len), Mathf.CeilToInt(dim.y), 0); //GraphicsFormat.R8_UInt
+
+        Result.enableRandomWrite = true;
+        Result.Create();
         
+        SentenceProcessor.SetVector("Params", new Vector4(dim.x, dim.y, atlasConfig.columns, len));
+        SentenceProcessor.SetTexture(0, "Atlas", FontAtlas);
+        SentenceProcessor.SetTexture(0, "Result", Result);
+        SentenceProcessor.SetBuffer(0, "Glyphs", indexBuffer);
+        SentenceProcessor.Dispatch(0, cParams.width, cParams.height, cParams.depth);
+
+        debugImage.texture = Result;
         
     }
 
-    void PrimeAtlas()
+    bool PrimeAtlas()
     {
         if (!FontAtlas)
-            return;
+            return false;
 
         atlasConfig.characterCount = atlasConfig.rows * atlasConfig.columns;
         var w = FontAtlas.width;
         var h = FontAtlas.height;
 
         atlasConfig.fontSize = new Vector2(w / atlasConfig.columns, h / atlasConfig.rows);
+        
+        Debug.Log("glyph size: " + atlasConfig.fontSize);
+        return true;
     }
 
     void clearPersistants()
@@ -125,8 +141,10 @@ public class SentenceGenerator : MonoBehaviour
     void Start()
     {
         clearPersistants();
-        PrimeAtlas();
+        if (!PrimeAtlas())
+            return;
         ParseSentence();
+        PrimeData();
     }
 
     

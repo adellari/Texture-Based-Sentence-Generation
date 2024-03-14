@@ -1,14 +1,28 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
+struct Glyph
+{
+    int placement;
+    int id;
+};
+
+float4 Params; //(glyph width, glyph height, column count, sentence length)
+Texture2D Atlas;
+SamplerState sampler_Atlas;
+
 RWTexture2D<float4> Result;
+StructuredBuffer<Glyph> Glyphs;
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
-
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    
+    Glyph glyph = Glyphs[id.z];
+    uint2 atlasSize;
+    Atlas.GetDimensions(atlasSize.x, atlasSize.y);
+    
+    uint2 index = uint2(id.x + Params.x * glyph.placement, id.y);
+    uint2 read = uint2((glyph.id % 16) * Params.x + id.x, (glyph.id / 16) * Params.y + id.y);
+    Result[index] = Atlas.SampleLevel(sampler_Atlas, float2( (float)read.x/(float)atlasSize.x , 1 - ((float)read.y/(float)atlasSize.y) ), 0);
 }
