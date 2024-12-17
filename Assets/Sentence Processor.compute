@@ -23,6 +23,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     Atlas.GetDimensions(atlasSize.x, atlasSize.y);
     
     uint2 index = uint2(id.x + Params.x * glyph.placement, id.y);
-    uint2 read = uint2((glyph.id % 16) * Params.x + id.x, (glyph.id / 16) * Params.y + id.y);
+    uint2 read = uint2((glyph.id % 16) * Params.x + id.x, (int)(glyph.id / 16) * Params.y + id.y);
     Result[index] = Atlas.SampleLevel(sampler_Atlas, float2( (float)read.x/(float)atlasSize.x , 1 - ((float)read.y/(float)atlasSize.y) ), 0);
 }
